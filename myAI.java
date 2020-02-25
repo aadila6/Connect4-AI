@@ -16,18 +16,18 @@ public class myAI extends AIModule {
             if (!terminate)
                 chosenMove = bestMoveSeen;
         }
-        System.out.println(evaluate_count);
         if (game.canMakeMove(chosenMove))
             game.makeMove(chosenMove);
+            System.out.println("Player is : " + player);
+            System.out.println("Opponent is : " + opponent);
     }
 
     private int minimax(final GameStateModule state, int depth, int playerID) {
         if (terminate)
             return 0;
         if (depth == maxDepth) {
-            evaluate_count++;
             int score = eval(state,playerID);
-            System.out.println("Chosen score value is: "+  score);
+            // System.out.println("Chosen score value is: "+  score);
             return score;
         }
         depth++;
@@ -40,14 +40,19 @@ public class myAI extends AIModule {
                 if (state.canMakeMove(i)) {
                     state.makeMove(i);
                     value = Math.max(value, minimax(state, depth, opponent));
-                    // System.out.println("Current Value: " + value);
                     state.unMakeMove();
                     if (value > bestVal) {
                         bestVal = value;
                         if (depth == 1) { // top of recursion, make our move choice
-                            bestMoveSeen = i;
-                            System.out.println("Best Move Seen: " + i);
-                            // System.out.println("The value is: " + value);
+                            //CHECK THE ENEMY'S STATE and return that col if its 4s
+                            int check = getDangerousCol(getBoard(state), opponent);
+                            if(check == -1){
+                                //Meaning enemy has a 4 is to be connected! We need to block it 
+                                System.out.println("DANGEROUS COLUMN : "+ dangerous);
+                                // bestMoveSeen = dangerous;
+                            }else{
+                                bestMoveSeen = i;
+                            }
                         }
                     }
                 }
@@ -70,15 +75,65 @@ public class myAI extends AIModule {
 
     // randomly assigns a value to a state
     private int eval(final GameStateModule state, int playerID) {
+        // Before we evaluate player's best next move, we need to think should I check opponent's connected 3? or 2?
+        // Give some prioritization on that.
         int playerScore = getScore(getBoard(state), player);
-        // int opponentScore = getScore(getBoard(state), opponent);
-        if(opponentScore == -1){
-            System.out.println("对方要赢了！！！！");
+        return playerScore;
+    }
+    int dangerous = -1;
+
+    public int getDangerousCol(ArrayList<ArrayList<Integer>> Board, int playerID) {
+        int playercheck = 0;
+        // score all combinations of 4 vertical '|'
+        for (int y = 0; y < 3; y++) {
+            for (int x = 0; x < 7; x++) {
+                playercheck = score(Board.get(x).get(y), Board.get(x).get(y + 1), Board.get(x).get(y + 2),
+                        Board.get(x).get(y + 3), playerID);
+                if (playercheck == 10 ) {
+                    dangerous = y;
+                    return -1;
+                }
+                // score -= enemycheck;
+            }
+        }
+        // score all combinations of 4 horizontal '--'
+        for (int y = 0; y < 6; y++) {
+            for (int x = 0; x < 4; x++) {
+                playercheck = score(Board.get(x).get(y), Board.get(x + 1).get(y), Board.get(x + 2).get(y),
+                        Board.get(x + 3).get(y), playerID);
+                if (playercheck == 10 ) {
+                    dangerous = y;
+                    return -1;
+                }
+                // score -= enemycheck;
+            }
         }
 
-        System.out.println("Player Score : " + playerScore);
-        System.out.println("Opponent Score : " + opponentScore);
-        return playerScore;
+        // score all combinations of 4 diagonal '/'
+        for (int y = 0; y < 3; y++) {
+            for (int x = 0; x < 4; x++) {
+                playercheck = score(Board.get(x).get(y), Board.get(x + 1).get(y + 1), Board.get(x + 2).get(y + 2),
+                        Board.get(x + 3).get(y + 3), playerID);
+               
+                if (playercheck == 10) {
+                    dangerous = y;
+                    return -1;
+                }
+            }
+        }
+
+        // score all combinations of 4 diagonal '\'
+        for (int y = 5; y > 2; y--) {
+            for (int x = 0; x < 4; x++) {
+                playercheck = score(Board.get(x).get(y), Board.get(x + 1).get(y - 1), Board.get(x + 2).get(y - 2),
+                        Board.get(x + 3).get(y - 3), playerID);
+                if (playercheck == 10) {
+                    dangerous = y;
+                    return -1;
+                }
+            }
+        }
+        return 0;
     }
 
     public ArrayList<ArrayList<Integer>> getBoard(final GameStateModule game) {
@@ -135,64 +190,64 @@ public class myAI extends AIModule {
     
     public int getScore(ArrayList<ArrayList<Integer>> Board, int playerID) {
         int score = 0;
-        int increment = 0;
+        int playercheck = 0;
         int enemycheck = 0;
         // score all combinations of 4 vertical '|'
         for (int y = 0; y < 3; y++) {
             for (int x = 0; x < 7; x++) {
-                increment = score(Board.get(x).get(y), Board.get(x).get(y + 1), Board.get(x).get(y + 2),
+                playercheck = score(Board.get(x).get(y), Board.get(x).get(y + 1), Board.get(x).get(y + 2),
                         Board.get(x).get(y + 3), playerID);
-                enemycheck = score(Board.get(x).get(y), Board.get(x).get(y + 1), Board.get(x).get(y + 2),
-                        Board.get(x).get(y + 3), opponent);
-                if (increment == -1) {
+                // enemycheck = score(Board.get(x).get(y), Board.get(x).get(y + 1), Board.get(x).get(y + 2),
+                //         Board.get(x).get(y + 3), opponent);
+                if (playercheck == -1 ) {
                     return -1;
                 }
-                score += increment;
-                score -= enemycheck;
+                score += playercheck;
+                // score -= enemycheck;
             }
         }
         // score all combinations of 4 horizontal '--''
         for (int y = 0; y < 6; y++) {
             for (int x = 0; x < 4; x++) {
-                increment = score(Board.get(x).get(y), Board.get(x + 1).get(y), Board.get(x + 2).get(y),
+                playercheck = score(Board.get(x).get(y), Board.get(x + 1).get(y), Board.get(x + 2).get(y),
                         Board.get(x + 3).get(y), playerID);
-                enemycheck = score(Board.get(x).get(y), Board.get(x + 1).get(y), Board.get(x + 2).get(y),
-                Board.get(x + 3).get(y), opponent);
-                if (increment == -1 ) {
+                // enemycheck = score(Board.get(x).get(y), Board.get(x + 1).get(y), Board.get(x + 2).get(y),
+                // Board.get(x + 3).get(y), opponent);
+                if (playercheck == -1 ) {
                     return -1;
                 }
-                score += increment;
-                score -= enemycheck;
+                score += playercheck;
+                // score -= enemycheck;
             }
         }
 
         // score all combinations of 4 diagonal '/'
         for (int y = 0; y < 3; y++) {
             for (int x = 0; x < 4; x++) {
-                increment = score(Board.get(x).get(y), Board.get(x + 1).get(y + 1), Board.get(x + 2).get(y + 2),
+                playercheck = score(Board.get(x).get(y), Board.get(x + 1).get(y + 1), Board.get(x + 2).get(y + 2),
                         Board.get(x + 3).get(y + 3), playerID);
-                enemycheck = score(Board.get(x).get(y), Board.get(x + 1).get(y + 1), Board.get(x + 2).get(y + 2),
-                Board.get(x + 3).get(y + 3), opponent);
-                if (increment == -1) {
+                // enemycheck = score(Board.get(x).get(y), Board.get(x + 1).get(y + 1), Board.get(x + 2).get(y + 2),
+                // Board.get(x + 3).get(y + 3), opponent);
+                if (playercheck == -1) {
                     return -1;
                 }
-                score += increment;
-                score -= enemycheck;
+                score += playercheck;
+                // score -= enemycheck;
             }
         }
 
         // score all combinations of 4 diagonal '\'
         for (int y = 5; y > 2; y--) {
             for (int x = 0; x < 4; x++) {
-                increment = score(Board.get(x).get(y), Board.get(x + 1).get(y - 1), Board.get(x + 2).get(y - 2),
+                playercheck = score(Board.get(x).get(y), Board.get(x + 1).get(y - 1), Board.get(x + 2).get(y - 2),
                         Board.get(x + 3).get(y - 3), playerID);
-                enemycheck = score(Board.get(x).get(y), Board.get(x + 1).get(y - 1), Board.get(x + 2).get(y - 2),
-                Board.get(x + 3).get(y - 3), opponent);
-                if (increment == -1) {
+                // enemycheck = score(Board.get(x).get(y), Board.get(x + 1).get(y - 1), Board.get(x + 2).get(y - 2),
+                // Board.get(x + 3).get(y - 3), opponent);
+                if (playercheck == -1) {
                     return -1;
                 }
-                score += increment;
-                score -= enemycheck;
+                score += playercheck;
+                // score -= enemycheck;
             }
         }
         return score;
